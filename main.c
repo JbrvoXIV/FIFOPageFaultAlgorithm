@@ -56,10 +56,53 @@ int validate_file_contents(FILE* pageref_file) {
     return size;
 }
 
+void initialize_page_frames(int page_frames[], int mem_size) {
+    for(int i = 0; i < mem_size; i++)
+        page_frames[i] = i;
+}
+
 void read_contents_into_arr(FILE* pageref_file, int page_ref[file_size]) {
     int num, i = 0;
-    while(fscanf(pageref_file, "%d", &num))
-        pageref_file[i++] = num;
+    while(fscanf(pageref_file, "%d", &num) != EOF)
+        page_ref[i++] = num;
+}
+
+int check_for_residence(int ref_page, const int page_frames[], int mem_size) {
+    for(int i = 0; i < mem_size; i++)
+        if(page_frames[i] == ref_page)
+            return 1;
+    return 0;
+}
+
+void shuffle_page_frames(int ref_page, int page_frames[], int mem_size) {
+    for(int i = 0; i < mem_size - 1; i++)
+        page_frames[i] = page_frames[i + 1];
+    page_frames[mem_size - 1] = ref_page;
+}
+
+void print_results(int page_faults, const int page_frames[], int mem_size) {
+    printf("\nFIFO: %d page faults\n", page_faults);
+    printf("Final state of memory:");
+    for(int i = 0; i < mem_size; i++)
+        printf("%2d", page_frames[i]);
+}
+
+void fifo_algorithm(int page_frames[], int page_ref[file_size], int mem_size) {
+    int page_faults = 0;
+    for(int i = 0; i < file_size; i++) { // go through each reference page in ref str
+        int ref_page = page_ref[i]; // current ref page
+        int is_resident = check_for_residence(ref_page, page_frames, mem_size);
+        if(is_resident == 0) {
+            shuffle_page_frames(ref_page, page_frames, mem_size);
+            page_faults++;
+        }
+    }
+    print_results(page_faults, page_frames, mem_size);
+}
+
+void print_page_ref(int page_ref[file_size]) {
+    for(int i = 0; i < file_size; i++)
+        printf("%2d", page_ref[i]);
 }
 
 int main(int argc, char* argv[]) {
@@ -68,12 +111,27 @@ int main(int argc, char* argv[]) {
         return err_code;
 
     FILE* pageref_file = fopen(argv[1], "r");
+    int mem_size = atoi(argv[2]);
     int is_valid_contents = validate_file_contents(pageref_file);
     if(is_valid_contents < 0) {
         fclose(pageref_file);
         return is_valid_contents;
     }
 
+    if(fseek(pageref_file, 0, SEEK_SET)) {
+        fprintf(stderr, "Error setting file pointer back to start.\n");
+        return -1;
+    }
+
     int page_ref[file_size];
+    int page_frames[mem_size];
+
+    initialize_page_frames(page_frames, mem_size);
     read_contents_into_arr(pageref_file, page_ref);
+
+    print_page_ref(page_ref);
+
+    fifo_algorithm(page_frames, page_ref, mem_size);
+
+    fclose(pageref_file);
 }
