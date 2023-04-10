@@ -3,4 +3,4 @@ project(pgm5 C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(pgm5 main.c)
+add_executable(pgm5 pagefaults.c)
